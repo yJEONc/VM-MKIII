@@ -1,0 +1,11 @@
+body{margin:0;font-family:sans-serif;background:#111;color:white;}
+.container{display:flex;height:100vh;}
+.sidebar{width:260px;background:#0b1221;padding:20px;overflow:auto;}
+.sidebar h2{margin-bottom:20px;}
+.sidebar ul{list-style:none;padding-left:0;}
+.sidebar li{padding:6px 4px;cursor:pointer;}
+.sidebar li:hover{background:#1b2340;}
+.sidebar li.disabled{opacity:0.5;cursor:default;}
+.main{flex:1;padding:30px;background:#0f1628;position:relative;}
+#reload-btn{position:absolute;right:30px;top:30px;padding:10px 18px;border-radius:20px;}
+#btn-area button{margin-right:20px;padding:10px 18px;border-radius:8px;}
