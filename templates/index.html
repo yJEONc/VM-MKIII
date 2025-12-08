@@ -2,44 +2,25 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<title>내신자판기 MKIII</title>
-<link rel="stylesheet" href="/static/style.css">
+<title>VM MKIII</title>
 </head>
 <body>
-<div class="container">
-  <aside class="sidebar">
-    <h2>내신자판기 MKIII</h2>
 
-    <section>
-      <h3>학년 선택</h3>
-      <ul id="grade-list">
-        <li data-grade="1">중학교 1학년</li>
-        <li data-grade="2">중학교 2학년</li>
-        <li data-grade="3">중학교 3학년</li>
-      </ul>
-    </section>
+<div style="float:left; width:200px; padding:10px;">
+  <h3>학년 선택</h3>
+  <ul>
+    <li data-grade="1">1학년</li>
+    <li data-grade="2">2학년</li>
+    <li data-grade="3">3학년</li>
+  </ul>
 
-    <section>
-      <h3>학교 선택</h3>
-      <ul id="school-list">
-        <li class="disabled">학년을 먼저 선택하세요</li>
-      </ul>
-    </section>
-  </aside>
+  <h3>학교 선택</h3>
+  <ul id="school-list"></ul>
+</div>
 
-  <main class="main">
-    <button id="reload-btn">⟳ 시험범위 업데이트</button>
-
-    <h1>시험범위 기반 PDF 생성</h1>
-    <p>학년과 학교를 선택하면 시험범위와 단원 목록이 표시됩니다.</p>
-
-    <div id="result-area"></div>
-
-    <div id="btn-area" style="display:none;">
-      <button id="btn-descriptive">서술형 PDF 생성</button>
-      <button id="btn-chodata">최다빈출 PDF 생성</button>
-    </div>
-  </main>
+<div style="margin-left:220px; padding:10px;">
+  <h1>단원 목록</h1>
+  <div id="units"></div>
 </div>
 
 <script src="/static/main.js"></script>
