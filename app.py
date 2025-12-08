@@ -42,7 +42,8 @@ def read_units(grade,school):
 
 def find_pdfs(material_type,grade,unit):
     folder=f"data/{material_type}/{grade}학년"
-    if not os.path.isdir(folder): return []
+    if not os.path.isdir(folder): 
+        return []
     files=[]
     for f in os.listdir(folder):
         if f.lower().endswith(".pdf") and re.search(rf"{unit}\b",f):
@@ -76,16 +77,20 @@ def api_merge():
         return jsonify({"error":"no_files"}),404
 
     merger=PdfMerger()
-    for p in pdfs: merger.append(p)
+    for p in pdfs: 
+        merger.append(p)
 
     buf=io.BytesIO()
     merger.write(buf)
     merger.close()
     buf.seek(0)
 
-    return send_file(buf,as_attachment=True,
-                     download_name=f"{grade}학년_{unit}_{mtype}.pdf",
-                     mimetype="application/pdf")
+    return send_file(
+        buf,
+        as_attachment=True,
+        download_name=f"{grade}학년_{unit}_{mtype}.pdf",
+        mimetype="application/pdf"
+    )
 
 if __name__=="__main__":
     port=int(os.getenv("PORT","5000"))
