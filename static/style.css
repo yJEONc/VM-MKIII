@@ -1,18 +1,67 @@
-body{margin:0;font-family:sans-serif;background:#111;color:white;}
+body{margin:0;font-family:sans-serif;background:#111827;color:#e5e7eb;}
 .container{display:flex;height:100vh;}
-.sidebar{width:260px;background:#0b1221;padding:20px;overflow:auto;}
+.sidebar{width:260px;background:#020617;padding:20px;overflow:auto;}
 .sidebar h2{margin-bottom:10px;font-size:18px;}
 .sidebar ul{list-style:none;padding-left:0;margin-bottom:20px;}
-.sidebar li{padding:8px 12px;cursor:pointer;border-radius:8px;margin-bottom:6px;background:#111827;}
-.sidebar li:hover{background:#1b2340;}
+.sidebar li{padding:8px 12px;cursor:pointer;border-radius:8px;margin-bottom:6px;background:#111827;color:#e5e7eb;transition:background 0.15s,color 0.15s;}
+.sidebar li:hover{background:#1f2937;}
 .sidebar li.disabled{opacity:0.5;cursor:default;}
-.sidebar li.active{background:#2563eb;color:#fff;}
+/* 학년 버튼 */
 #grade-list{display:flex;gap:8px;}
 #grade-list li{margin-bottom:0;flex:1;text-align:center;}
-.main{flex:1;padding:30px;background:#0f1628;position:relative;overflow:auto;}
-#reload-btn{position:absolute;right:30px;top:30px;padding:10px 18px;border-radius:20px;}
-#btn-area button{margin-right:20px;padding:10px 18px;border-radius:8px;}
-.selected-info{margin-bottom:20px;font-size:16px;font-weight:600;}
-.unit-row{margin-bottom:8px;}
-.unit-row button{margin-left:8px;padding:6px 10px;border-radius:6px;border:none;cursor:pointer;}
-.unit-row button:hover{opacity:0.9;}
+.grade-item.active{background:#2563eb;color:#fff;}
+/* 학교 색상 규칙 */
+.school-item.has-end{color:#60a5fa;} /* end 시트에 있는 학교(학년기준) - 파랑 텍스트 */
+.school-item.selected{background:#22c55e;color:#022c22;} /* 사용자가 선택한 학교 - 녹색 */
+
+/* 메인 영역 */
+.main{flex:1;padding:24px;background:#020617;position:relative;overflow:auto;}
+.selected-info{margin-bottom:16px;font-size:16px;font-weight:600;}
+.unit-columns{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr)); /* 2열 고정 */
+    gap:16px;
+}
+
+/* 학교 카드 */
+.school-card{
+    border:1px solid #1f2937;
+    border-radius:12px;
+    padding:16px;
+    background:#0b1120;
+    display:flex;
+    flex-direction:column;
+    min-height:160px;
+}
+.school-card-header{
+    font-size:16px;
+    font-weight:600;
+    margin-bottom:8px;
+}
+.school-card-body{
+    flex:1;
+    font-size:14px;
+}
+.school-card-body ul{
+    padding-left:18px;
+    margin:0;
+}
+.school-card-body li{
+    margin-bottom:4px;
+}
+.school-card-footer{
+    margin-top:12px;
+}
+.school-card-footer button{
+    margin-right:8px;
+    padding:8px 12px;
+    border-radius:8px;
+    border:none;
+    cursor:pointer;
+    background:#2563eb;
+    color:#fff;
+    font-size:13px;
+}
+.school-card-footer button:hover{
+    background:#1d4ed8;
+}

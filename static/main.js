@@ -1,7 +1,8 @@
 let grade = null;
-let school = null;
+let gradeSchools = [];          // end 시트에 해당 학년으로 존재하는 학교들
+let selectedSchools = new Set(); // 사용자가 선택한 학교들
+let allSchools = [];            // 전체 학교 목록
 
-// 페이지 로드시 자동으로 학교 목록 표시
 window.onload = function () {
     loadSchools();
     bindGradeClicks();
@@ -9,143 +10,197 @@ window.onload = function () {
 
 function bindGradeClicks() {
     document.querySelectorAll("[data-grade]").forEach(li => {
-        li.onclick = () => {
+        li.onclick = async () => {
             grade = li.dataset.grade;
-            // active 클래스 처리
+
+            // 학년 active 표시
             document.querySelectorAll("[data-grade]").forEach(g => g.classList.remove("active"));
             li.classList.add("active");
+
+            // 학년이 바뀌면 선택된 학교는 유지할지? -> 유지하되 색상/단원 다시 계산
+            await loadGradeSchools();
             updateSelectedInfo();
-            loadUnits();
+            updateSchoolStyles();
+            renderUnits();
         };
     });
 }
 
-// 학교 목록 로드
+// 전체 학교 목록 로딩
 async function loadSchools() {
     const res = await fetch("/api/schools");
-    const list = await res.json();
+    allSchools = await res.json();
 
     const ul = document.getElementById("school-list");
     ul.innerHTML = "";
 
-    list.forEach(s => {
+    allSchools.forEach(s => {
         const li = document.createElement("li");
         li.textContent = s;
+        li.dataset.school = s;
         li.classList.add("school-item");
-        li.onclick = () => {
-            school = s;
-            // active 클래스 처리
-            document.querySelectorAll("#school-list li").forEach(x => x.classList.remove("active"));
-            li.classList.add("active");
-            updateSelectedInfo();
-            loadUnits();
-        };
+        li.onclick = () => toggleSchoolSelection(s);
         ul.appendChild(li);
     });
 }
 
-// 선택 정보 표시
-function updateSelectedInfo(units = null) {
+// 특정 학년에 대해 end 시트에 존재하는 학교 목록 로딩
+async function loadGradeSchools() {
+    if (!grade) {
+        gradeSchools = [];
+        return;
+    }
+    const res = await fetch("/api/grade_schools", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ grade: grade })
+    });
+    gradeSchools = await res.json();
+}
+
+// 학교 선택 토글
+function toggleSchoolSelection(schoolName) {
+    if (!grade) {
+        alert("먼저 학년을 선택하세요.");
+        return;
+    }
+    if (selectedSchools.has(schoolName)) {
+        selectedSchools.delete(schoolName);
+    } else {
+        selectedSchools.add(schoolName);
+    }
+    updateSelectedInfo();
+    updateSchoolStyles();
+    renderUnits();
+}
+
+// 상단 선택 정보 업데이트
+function updateSelectedInfo() {
     const box = document.getElementById("selected-info");
-    if (!grade && !school) {
+    if (!grade && selectedSchools.size === 0) {
         box.textContent = "학년과 학교를 선택해주세요.";
         return;
     }
 
-    let txt = "";
-    if (grade) txt += `${grade}학년`;
-    if (school) txt += ` / ${school}`;
-
-    if (units && units.length > 0) {
-        txt += ` / 단원: ${units.join(", ")}`;
+    let parts = [];
+    if (grade) parts.push(grade + "학년");
+    if (selectedSchools.size > 0) {
+        parts.push("학교: " + Array.from(selectedSchools).join(", "));
     }
 
-    box.textContent = txt;
+    box.textContent = parts.join(" / ");
 }
 
-// 단원 목록
-async function loadUnits() {
-    if (!grade || !school) return;
+// 학교 리스트 색상/스타일 업데이트
+function updateSchoolStyles() {
+    const lis = document.querySelectorAll("#school-list li");
+    lis.forEach(li => {
+        const name = li.dataset.school;
+        li.classList.remove("has-end", "selected");
 
-    const res = await fetch("/api/units", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({ grade: grade, school: school })
-    });
-
-    const units = await res.json();
-    const box = document.getElementById("units");
-    box.innerHTML = "";
-
-    // 선택 정보에 단원까지 표시
-    updateSelectedInfo(units);
-
-    // 단원별 버튼
-    units.forEach(u => {
-        const row = document.createElement("div");
-        row.classList.add("unit-row");
-        row.textContent = u + "  ";
-
-        const b1 = document.createElement("button");
-        b1.textContent = "서술형";
-        b1.onclick = () => download(u, "서술형");
-
-        const b2 = document.createElement("button");
-        b2.textContent = "최다빈출";
-        b2.onclick = () => download(u, "최다빈출");
-
-        row.appendChild(b1);
-        row.appendChild(b2);
-        box.appendChild(row);
-    });
-
-    // 전체 병합 버튼
-    const bottom = document.createElement("div");
-    bottom.style.marginTop = "30px";
-
-    const all1 = document.createElement("button");
-    all1.textContent = "서술형 전체 합치기";
-    all1.onclick = () => mergeAll("서술형");
-
-    const all2 = document.createElement("button");
-    all2.textContent = "최다빈출 전체 합치기";
-    all2.onclick = () => mergeAll("최다빈출");
-
-    bottom.appendChild(all1);
-    bottom.appendChild(all2);
-
-    box.appendChild(bottom);
-}
-
-// 단원 개별 다운로드
-function download(unit, type) {
-    fetch("/api/merge", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({ grade: grade, unit: unit, type: type })
-    }).then(async r => {
-        if (!r.ok) {
-            alert("파일 없음");
-            return;
+        // end 시트에 해당 학년+학교가 있으면 파랑 계열 텍스트
+        if (grade && gradeSchools.includes(name)) {
+            li.classList.add("has-end");
         }
-        const blob = await r.blob();
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `${grade}학년_${unit}_${type}.pdf`;
-        a.click();
+
+        // 사용자가 선택한 학교는 녹색 (선택 색상 우선)
+        if (selectedSchools.has(name)) {
+            li.classList.add("selected");
+        }
     });
 }
 
-// 전체 단원 병합 다운로드
-function mergeAll(type) {
+// 학교별 단원 카드 렌더링
+async function renderUnits() {
+    const container = document.getElementById("unit-columns");
+    container.innerHTML = "";
+
+    if (!grade || selectedSchools.size === 0) return;
+
+    const schools = Array.from(selectedSchools);
+
+    for (const sch of schools) {
+        const card = await buildSchoolCard(grade, sch);
+        container.appendChild(card);
+    }
+}
+
+// 한 학교 카드 생성
+async function buildSchoolCard(gradeVal, schoolName) {
+    // 단원 코드 가져오기
+    const resCodes = await fetch("/api/units", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ grade: gradeVal, school: schoolName })
+    });
+    const codes = await resCodes.json();
+
+    // 단원명이 필요하면 매핑 가져오기
+    let mapping = {};
+    if (Array.isArray(codes) && codes.length > 0) {
+        const resMap = await fetch("/api/unit_names", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({ grade: gradeVal, codes: codes })
+        });
+        mapping = await resMap.json();
+    }
+
+    const card = document.createElement("div");
+    card.classList.add("school-card");
+
+    const header = document.createElement("div");
+    header.classList.add("school-card-header");
+    header.textContent = gradeVal + "학년 " + schoolName;
+    card.appendChild(header);
+
+    const body = document.createElement("div");
+    body.classList.add("school-card-body");
+
+    if (!codes || codes.length === 0) {
+        const p = document.createElement("p");
+        p.textContent = "등록된 단원이 없습니다.";
+        body.appendChild(p);
+    } else {
+        const ul = document.createElement("ul");
+        codes.forEach(code => {
+            const li = document.createElement("li");
+            const name = mapping[code] || "";
+            li.textContent = name ? `${code} ${name}` : code;
+            ul.appendChild(li);
+        });
+        body.appendChild(ul);
+    }
+    card.appendChild(body);
+
+    const footer = document.createElement("div");
+    footer.classList.add("school-card-footer");
+
+    const b1 = document.createElement("button");
+    b1.textContent = "서술형 전체 합치기";
+    b1.onclick = () => mergeAll(gradeVal, schoolName, "서술형");
+
+    const b2 = document.createElement("button");
+    b2.textContent = "최다빈출 전체 합치기";
+    b2.onclick = () => mergeAll(gradeVal, schoolName, "최다빈출");
+
+    footer.appendChild(b1);
+    footer.appendChild(b2);
+
+    card.appendChild(footer);
+
+    return card;
+}
+
+// 학교별 전체 단원 병합 다운로드
+function mergeAll(gradeVal, schoolName, type) {
     fetch("/api/merge_all", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({ grade: grade, school: school, type: type })
+        body: JSON.stringify({ grade: gradeVal, school: schoolName, type: type })
     }).then(async r => {
         if (!r.ok) {
-            alert("전체 병합 파일이 없습니다.");
+            alert("병합할 파일이 없습니다.");
             return;
         }
         const blob = await r.blob();
@@ -153,7 +208,7 @@ function mergeAll(type) {
 
         const a = document.createElement("a");
         a.href = url;
-        a.download = `${grade}학년_${school}_${type}_전체.pdf`;
+        a.download = `${gradeVal}학년_${schoolName}_${type}_전체.pdf`;
         a.click();
     });
 }
