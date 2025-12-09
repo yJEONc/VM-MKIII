@@ -1,11 +1,18 @@
 body{margin:0;font-family:sans-serif;background:#111;color:white;}
 .container{display:flex;height:100vh;}
 .sidebar{width:260px;background:#0b1221;padding:20px;overflow:auto;}
-.sidebar h2{margin-bottom:20px;}
-.sidebar ul{list-style:none;padding-left:0;}
-.sidebar li{padding:6px 4px;cursor:pointer;}
+.sidebar h2{margin-bottom:10px;font-size:18px;}
+.sidebar ul{list-style:none;padding-left:0;margin-bottom:20px;}
+.sidebar li{padding:8px 12px;cursor:pointer;border-radius:8px;margin-bottom:6px;background:#111827;}
 .sidebar li:hover{background:#1b2340;}
 .sidebar li.disabled{opacity:0.5;cursor:default;}
-.main{flex:1;padding:30px;background:#0f1628;position:relative;}
+.sidebar li.active{background:#2563eb;color:#fff;}
+#grade-list{display:flex;gap:8px;}
+#grade-list li{margin-bottom:0;flex:1;text-align:center;}
+.main{flex:1;padding:30px;background:#0f1628;position:relative;overflow:auto;}
 #reload-btn{position:absolute;right:30px;top:30px;padding:10px 18px;border-radius:20px;}
 #btn-area button{margin-right:20px;padding:10px 18px;border-radius:8px;}
+.selected-info{margin-bottom:20px;font-size:16px;font-weight:600;}
+.unit-row{margin-bottom:8px;}
+.unit-row button{margin-left:8px;padding:6px 10px;border-radius:6px;border:none;cursor:pointer;}
+.unit-row button:hover{opacity:0.9;}

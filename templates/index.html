@@ -1,28 +1,33 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta charset="UTF-8">
-<title>VM MKIII</title>
+    <meta charset="UTF-8">
+    <title>VM MKIII</title>
+    <link rel="stylesheet" href="/static/style.css?v=2">
 </head>
 <body>
+<div class="container">
+    <div class="sidebar">
+        <h2>학년 선택</h2>
+        <ul id="grade-list">
+            <li data-grade="1" class="grade-item">1학년</li>
+            <li data-grade="2" class="grade-item">2학년</li>
+            <li data-grade="3" class="grade-item">3학년</li>
+        </ul>
 
-<div style="float:left; width:200px; padding:10px;">
-  <h3>학년 선택</h3>
-  <ul>
-    <li data-grade="1">1학년</li>
-    <li data-grade="2">2학년</li>
-    <li data-grade="3">3학년</li>
-  </ul>
+        <h2>학교 선택</h2>
+        <ul id="school-list"></ul>
+    </div>
 
-  <h3>학교 선택</h3>
-  <ul id="school-list"></ul>
+    <div class="main">
+        <div id="selected-info" class="selected-info">
+            학년과 학교를 선택해주세요.
+        </div>
+        <h1>단원 목록</h1>
+        <div id="units"></div>
+    </div>
 </div>
 
-<div style="margin-left:220px; padding:10px;">
-  <h1>단원 목록</h1>
-  <div id="units"></div>
-</div>
-
-<script src="/static/main.js?v=1"></script>
+<script src="/static/main.js?v=2"></script>
 </body>
 </html>

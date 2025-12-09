@@ -19,35 +19,35 @@ def get_service():
     return build("sheets","v4",credentials=creds)
 
 def read_school_list():
-    service=get_service()
-    result=service.spreadsheets().values().get(
+    service = get_service()
+    result = service.spreadsheets().values().get(
         spreadsheetId=SPREADSHEET_ID,
         range=f"{SHEET_SCHOOL}!A2:A"
     ).execute()
-    vals=result.get("values",[])
+    vals = result.get("values", [])
     return [v[0] for v in vals if v]
 
-def read_units(grade,school):
-    service=get_service()
-    result=service.spreadsheets().values().get(
+def read_units(grade, school):
+    service = get_service()
+    result = service.spreadsheets().values().get(
         spreadsheetId=SPREADSHEET_ID,
         range=f"{SHEET_END}!A2:D"
     ).execute()
-    rows=result.get("values",[])
+    rows = result.get("values", [])
     for r in rows:
-        if len(r)>=4:
-            if str(r[1])==str(grade) and r[2]==school:
+        if len(r) >= 4:
+            if str(r[1]) == str(grade) and r[2] == school:
                 return [u.strip() for u in r[3].split(",")]
     return []
 
-def find_pdfs(material_type,grade,unit):
-    folder=f"data/{material_type}/{grade}학년"
-    if not os.path.isdir(folder): 
+def find_pdfs(material_type, grade, unit):
+    folder = f"data/{material_type}/{grade}학년"
+    if not os.path.isdir(folder):
         return []
-    files=[]
+    files = []
     for f in os.listdir(folder):
-        if f.lower().endswith(".pdf") and re.search(rf"{unit}\b",f):
-            files.append(os.path.join(folder,f))
+        if f.lower().endswith(".pdf") and re.search(rf"{re.escape(unit)}\b", f):
+            files.append(os.path.join(folder, f))
     return files
 
 @app.route("/")
@@ -58,29 +58,29 @@ def index():
 def api_schools():
     return jsonify(read_school_list())
 
-@app.route("/api/units",methods=["POST"])
+@app.route("/api/units", methods=["POST"])
 def api_units():
-    data=request.json
-    grade=data["grade"]
-    school=data["school"]
-    return jsonify(read_units(grade,school))
+    data = request.json
+    grade = data["grade"]
+    school = data["school"]
+    return jsonify(read_units(grade, school))
 
-@app.route("/api/merge",methods=["POST"])
+@app.route("/api/merge", methods=["POST"])
 def api_merge():
-    data=request.json
-    grade=data["grade"]
-    unit=data["unit"]
-    mtype=data["type"]
+    data = request.json
+    grade = data["grade"]
+    unit = data["unit"]
+    mtype = data["type"]
 
-    pdfs=find_pdfs(mtype,grade,unit)
+    pdfs = find_pdfs(mtype, grade, unit)
     if not pdfs:
-        return jsonify({"error":"no_files"}),404
+        return jsonify({"error": "no_files"}), 404
 
-    merger=PdfMerger()
-    for p in pdfs: 
+    merger = PdfMerger()
+    for p in pdfs:
         merger.append(p)
 
-    buf=io.BytesIO()
+    buf = io.BytesIO()
     merger.write(buf)
     merger.close()
     buf.seek(0)
@@ -92,6 +92,38 @@ def api_merge():
         mimetype="application/pdf"
     )
 
-if __name__=="__main__":
-    port=int(os.getenv("PORT","5000"))
-    app.run(host="0.0.0.0",port=port)
+@app.route("/api/merge_all", methods=["POST"])
+def api_merge_all():
+    data = request.json
+    grade = data["grade"]
+    mtype = data["type"]
+    school = data["school"]
+
+    units = read_units(grade, school)
+    merger = PdfMerger()
+    count = 0
+
+    for unit in units:
+        pdfs = find_pdfs(mtype, grade, unit)
+        for p in pdfs:
+            merger.append(p)
+            count += 1
+
+    if count == 0:
+        return jsonify({"error": "no_files"}), 404
+
+    buf = io.BytesIO()
+    merger.write(buf)
+    merger.close()
+    buf.seek(0)
+
+    return send_file(
+        buf,
+        as_attachment=True,
+        download_name=f"{grade}학년_{school}_{mtype}_전체.pdf",
+        mimetype="application/pdf"
+    )
+
+if __name__ == "__main__":
+    port = int(os.getenv("PORT", "5000"))
+    app.run(host="0.0.0.0", port=port)
