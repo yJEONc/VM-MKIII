@@ -17,7 +17,6 @@ function bindGradeClicks() {
             document.querySelectorAll("[data-grade]").forEach(g => g.classList.remove("active"));
             li.classList.add("active");
 
-            // 학년이 바뀌면 선택된 학교는 유지할지? -> 유지하되 색상/단원 다시 계산
             await loadGradeSchools();
             updateSelectedInfo();
             updateSchoolStyles();
@@ -98,12 +97,12 @@ function updateSchoolStyles() {
         const name = li.dataset.school;
         li.classList.remove("has-end", "selected");
 
-        // end 시트에 해당 학년+학교가 있으면 파랑 계열 텍스트
+        // end 시트에 해당 학년+학교가 있으면 파랑 텍스트
         if (grade && gradeSchools.includes(name)) {
             li.classList.add("has-end");
         }
 
-        // 사용자가 선택한 학교는 녹색 (선택 색상 우선)
+        // 사용자가 선택한 학교는 녹색 (우선)
         if (selectedSchools.has(name)) {
             li.classList.add("selected");
         }
@@ -178,31 +177,71 @@ async function buildSchoolCard(gradeVal, schoolName) {
 
     const b1 = document.createElement("button");
     b1.textContent = "서술형 전체 합치기";
-    b1.onclick = () => mergeAll(gradeVal, schoolName, "서술형");
+    b1.onclick = () => mergeAll(gradeVal, schoolName, "서술형", card);
 
     const b2 = document.createElement("button");
     b2.textContent = "최다빈출 전체 합치기";
-    b2.onclick = () => mergeAll(gradeVal, schoolName, "최다빈출");
+    b2.onclick = () => mergeAll(gradeVal, schoolName, "최다빈출", card);
 
     footer.appendChild(b1);
     footer.appendChild(b2);
-
     card.appendChild(footer);
+
+    // Progress bar 아래쪽에 추가
+    const progressBar = document.createElement("div");
+    progressBar.classList.add("progress-bar");
+    for (let i = 0; i < 10; i++) {
+        const cell = document.createElement("div");
+        cell.classList.add("progress-cell");
+        progressBar.appendChild(cell);
+    }
+    card.appendChild(progressBar);
 
     return card;
 }
 
-// 학교별 전체 단원 병합 다운로드
-function mergeAll(gradeVal, schoolName, type) {
+// 학교별 전체 단원 병합 다운로드 + 진행 바 표시
+function mergeAll(gradeVal, schoolName, type, card) {
+    const progressCells = card.querySelectorAll(".progress-cell");
+
+    // 초기화
+    progressCells.forEach(c => {
+        c.classList.remove("filled", "done");
+        c.style.background = ""; // reset inline styles
+    });
+
+    let index = 0;
+    const interval = setInterval(() => {
+        if (index < progressCells.length) {
+            progressCells[index].classList.add("filled");
+            index++;
+        } else {
+            clearInterval(interval);
+        }
+    }, 150);
+
     fetch("/api/merge_all", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify({ grade: gradeVal, school: schoolName, type: type })
     }).then(async r => {
+        clearInterval(interval);
+
         if (!r.ok) {
-            alert("병합할 파일이 없습니다.");
+            // 실패 시 빨간색으로 표시
+            progressCells.forEach(c => {
+                c.classList.remove("filled", "done");
+                c.style.background = "#ef4444";
+            });
             return;
         }
+
+        // 성공 -> 모든 칸을 done(녹색)으로
+        progressCells.forEach(c => {
+            c.classList.remove("filled");
+            c.classList.add("done");
+        });
+
         const blob = await r.blob();
         const url = URL.createObjectURL(blob);
 

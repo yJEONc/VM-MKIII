@@ -65,3 +65,23 @@ body{margin:0;font-family:sans-serif;background:#111827;color:#e5e7eb;}
 .school-card-footer button:hover{
     background:#1d4ed8;
 }
+
+/* Progress bar */
+.progress-bar{
+    display:flex;
+    gap:4px;
+    margin-top:10px;
+}
+.progress-cell{
+    width:10px;
+    height:10px;
+    background:#1f2937;
+    border-radius:2px;
+    transition:background 0.15s;
+}
+.progress-cell.filled{
+    background:#60a5fa;
+}
+.progress-cell.done{
+    background:#22c55e;
+}
