@@ -197,3 +197,43 @@ def api_merge_all():
 if __name__ == "__main__":
     port = int(os.getenv("PORT", "5000"))
     app.run(host="0.0.0.0", port=port)
+
+
+@app.route("/api/merge_final", methods=["POST"])
+def api_merge_final():
+    data = request.json
+    grade = data["grade"]
+    school = data["school"]
+
+    units = read_units_codes(grade, school)
+    unit_numbers = sorted({int(u.split("-")[0]) for u in units})
+
+    folder = f"data/Final모의고사/{grade}학년"
+    if not os.path.isdir(folder):
+        return jsonify({"error": "no_folder"}), 404
+
+    matched_pdfs = []
+    for f in os.listdir(folder):
+        if f.lower().endswith(".pdf"):
+            for num in unit_numbers:
+                if f"{num}단원" in f:
+                    matched_pdfs.append(os.path.join(folder, f))
+
+    if not matched_pdfs:
+        return jsonify({"error": "no_files"}), 404
+
+    merger = PdfMerger()
+    for p in matched_pdfs:
+        merger.append(p)
+
+    buf = io.BytesIO()
+    merger.write(buf)
+    merger.close()
+    buf.seek(0)
+
+    return send_file(
+        buf,
+        as_attachment=True,
+        download_name=f"{grade}학년_{school}_FINAL모의고사.pdf",
+        mimetype="application/pdf"
+    )
