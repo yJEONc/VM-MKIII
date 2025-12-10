@@ -184,8 +184,8 @@ async function buildSchoolCard(gradeVal, schoolName) {
     b2.onclick = () => mergeAll(gradeVal, schoolName, "최다빈출", card);
 
     footer.appendChild(b1);
-    footer.appendChild(b2);
     const b3=document.createElement('button');b3.textContent='FINAL 모의고사 합치기';b3.onclick=()=>mergeFinal(gradeVal,schoolName,card);footer.appendChild(b3);
+footer.appendChild(b2);
     card.appendChild(footer);
 
     // Progress bar 아래쪽에 추가
@@ -251,50 +251,4 @@ function mergeAll(gradeVal, schoolName, type, card) {
         a.download = `${gradeVal}학년_${schoolName}_${type}_전체.pdf`;
         a.click();
     });
-}
-
-
-async function mergeFinal(gradeVal, schoolName, card) {
-    const progressCells = card.querySelectorAll(".progress-cell");
-
-    progressCells.forEach(c => {
-        c.classList.remove("filled", "done");
-        c.style.background = "";
-    });
-
-    let index = 0;
-    const interval = setInterval(() => {
-        if (index < progressCells.length) {
-            progressCells[index].classList.add("filled");
-            index++;
-        } else {
-            clearInterval(interval);
-        }
-    }, 150);
-
-    const res = await fetch("/api/merge_final", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ grade: gradeVal, school: schoolName })
-    });
-
-    clearInterval(interval);
-
-    if (!res.ok) {
-        progressCells.forEach(c => c.style.background = "#ef4444");
-        return;
-    }
-
-    progressCells.forEach(c => {
-        c.classList.remove("filled");
-        c.classList.add("done");
-    });
-
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${gradeVal}학년_${schoolName}_FINAL모의고사.pdf`;
-    a.click();
 }
