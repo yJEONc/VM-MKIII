@@ -198,7 +198,6 @@ if __name__ == "__main__":
     port = int(os.getenv("PORT", "5000"))
     app.run(host="0.0.0.0", port=port)
 
-
 @app.route("/api/merge_final", methods=["POST"])
 def api_merge_final():
     data = request.json
@@ -209,36 +208,20 @@ def api_merge_final():
     unit_numbers = sorted({int(u.split("-")[0]) for u in units})
 
     folder = f"data/Final모의고사/{grade}학년"
-    if not os.path.isdir(folder):
-        return jsonify({"error": "no_folder"}), 200  # safe
-
     matched_pdfs = []
-    for f in os.listdir(folder):
-        if f.lower().endswith(".pdf"):
-            for num in unit_numbers:
-                if f"{num}단원" in f:
-                    matched_pdfs.append(os.path.join(folder, f))
 
-    # Safe exception: 1학년 1단원은 원래 없음 → 에러 없이 빈 파일 반환
-    if len(matched_pdfs) == 0 and grade == "1" and 1 in unit_numbers:
-        buf = io.BytesIO()
-        merger = PdfMerger()
-        merger.write(buf)
-        merger.close()
-        buf.seek(0)
-        return send_file(
-            buf,
-            as_attachment=True,
-            download_name=f"{grade}학년_{school}_FINAL모의고사.pdf",
-            mimetype="application/pdf"
-        )
+    if os.path.isdir(folder):
+        for f in os.listdir(folder):
+            if f.lower().endswith(".pdf"):
+                for num in unit_numbers:
+                    if f"{num}단원" in f:
+                        matched_pdfs.append(os.path.join(folder, f))
 
-    if not matched_pdfs:
-        return jsonify({"error": "no_files"}), 200  # safe, no error
-
+    # Create empty PDF if nothing found
     merger = PdfMerger()
-    for p in matched_pdfs:
-        merger.append(p)
+    if matched_pdfs:
+        for p in matched_pdfs:
+            merger.append(p)
 
     buf = io.BytesIO()
     merger.write(buf)

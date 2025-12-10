@@ -85,3 +85,13 @@ body{margin:0;font-family:sans-serif;background:#111827;color:#e5e7eb;}
 .progress-cell.done{
     background:#22c55e;
 }
+
+.button-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    margin-bottom: 12px;
+}
+.button-grid button {
+    width: 100%;
+}

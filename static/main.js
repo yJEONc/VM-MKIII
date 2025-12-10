@@ -173,6 +173,7 @@ async function buildSchoolCard(gradeVal, schoolName) {
     card.appendChild(body);
 
     const footer = document.createElement("div");
+footer.classList.add('button-grid');
     footer.classList.add("school-card-footer");
 
     const b1 = document.createElement("button");
@@ -184,8 +185,7 @@ async function buildSchoolCard(gradeVal, schoolName) {
     b2.onclick = () => mergeAll(gradeVal, schoolName, "최다빈출", card);
 
     footer.appendChild(b1);
-    const b3=document.createElement('button');b3.textContent='FINAL 모의고사 합치기';b3.onclick=()=>mergeFinal(gradeVal,schoolName,card);footer.appendChild(b3);
-footer.appendChild(b2);
+    footer.appendChild(b2);
     card.appendChild(footer);
 
     // Progress bar 아래쪽에 추가
