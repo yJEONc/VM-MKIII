@@ -1,34 +1,26 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-    <meta charset="UTF-8">
-    <title>VM MKIII</title>
-    <link rel="stylesheet" href="/static/style.css?v=4">
-</head>
+
+<!doctype html>
+<html>
 <body>
-<div class="container">
-    <div class="sidebar">
-        <h2>학년 선택</h2>
-        <ul id="grade-list">
-            <li data-grade="1" class="grade-item">1학년</li>
-            <li data-grade="2" class="grade-item">2학년</li>
-            <li data-grade="3" class="grade-item">3학년</li>
-        </ul>
+  <form method="post" action="/merge">
+    <select name="exam_type">
+      <option>서술형</option>
+      <option>최다빈출</option>
+      <option>Final모의고사</option>
+    </select>
 
-        <h2>학교 선택</h2>
-        <ul id="school-list"></ul>
+    <select name="grade">
+      <option>1학년</option>
+      <option>2학년</option>
+      <option>3학년</option>
+    </select>
+
+    <div>
+      <label><input type="checkbox" name="units" value="1단원">1단원</label>
+      <label><input type="checkbox" name="units" value="2단원">2단원</label>
     </div>
 
-    <div class="main">
-        <div id="selected-info" class="selected-info">
-            학년과 학교를 선택해주세요.
-        </div>
-        <div id="unit-columns" class="unit-columns">
-            <!-- 학교별 단원 카드가 여기 채워짐 -->
-        </div>
-    </div>
-</div>
-
-<script src="/static/main.js?v=4"></script>
+    <button type="submit">PDF 합치기</button>
+  </form>
 </body>
 </html>
