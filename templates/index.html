@@ -1,26 +1,80 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>내신자판기 MK III</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
 
-<!doctype html>
-<html>
+        .controls {
+            margin-bottom: 15px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            width: 320px;
+            margin-top: 20px;
+        }
+
+        button {
+            padding: 14px;
+            font-size: 15px;
+            cursor: pointer;
+        }
+
+        #loading {
+            display: none;
+            margin-top: 15px;
+        }
+    </style>
+</head>
 <body>
-  <form method="post" action="/merge">
-    <select name="exam_type">
-      <option>서술형</option>
-      <option>최다빈출</option>
-      <option>Final모의고사</option>
-    </select>
 
-    <select name="grade">
-      <option>1학년</option>
-      <option>2학년</option>
-      <option>3학년</option>
-    </select>
+<h2>내신자판기 MK III</h2>
 
-    <div>
-      <label><input type="checkbox" name="units" value="1단원">1단원</label>
-      <label><input type="checkbox" name="units" value="2단원">2단원</label>
+<form method="post" action="/merge" onsubmit="showLoading()">
+
+    <div class="controls">
+        <label>학년 </label>
+        <select name="grade">
+            <option value="1학년">1학년</option>
+            <option value="2학년">2학년</option>
+            <option value="3학년">3학년</option>
+        </select>
     </div>
 
-    <button type="submit">PDF 합치기</button>
-  </form>
+    <div class="controls">
+        <label>
+            <input type="checkbox" name="units" value="1단원"> 1단원
+        </label>
+        <label>
+            <input type="checkbox" name="units" value="2단원"> 2단원
+        </label>
+        <label>
+            <input type="checkbox" name="units" value="3단원"> 3단원
+        </label>
+    </div>
+
+    <div class="grid">
+        <button type="submit" name="exam_type" value="서술형">서술형</button>
+        <button type="submit" name="exam_type" value="최다빈출">최다빈출</button>
+        <button type="submit" name="exam_type" value="Final모의고사">Final 모의고사</button>
+        <button type="button" disabled>오투 모의고사</button>
+    </div>
+
+    <div id="loading">PDF 생성 중...</div>
+</form>
+
+<script>
+function showLoading() {
+    document.getElementById("loading").style.display = "block";
+}
+</script>
+
 </body>
 </html>
