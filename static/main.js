@@ -17,6 +17,7 @@ function bindGradeClicks() {
             document.querySelectorAll("[data-grade]").forEach(g => g.classList.remove("active"));
             li.classList.add("active");
 
+            selectedSchools.clear(); // 학년 변경 시 학교 선택 초기화
             await loadGradeSchools();
             updateSelectedInfo();
             updateSchoolStyles();
@@ -97,36 +98,30 @@ function updateSchoolStyles() {
         const name = li.dataset.school;
         li.classList.remove("has-end", "selected");
 
-        // end 시트에 해당 학년+학교가 있으면 파랑 텍스트
         if (grade && gradeSchools.includes(name)) {
             li.classList.add("has-end");
         }
-
-        // 사용자가 선택한 학교는 녹색 (우선)
         if (selectedSchools.has(name)) {
             li.classList.add("selected");
         }
     });
 }
 
-// 학교별 단원 카드 렌더링
+// 학교별 카드 렌더링
 async function renderUnits() {
     const container = document.getElementById("unit-columns");
     container.innerHTML = "";
 
     if (!grade || selectedSchools.size === 0) return;
 
-    const schools = Array.from(selectedSchools);
-
-    for (const sch of schools) {
+    for (const sch of selectedSchools) {
         const card = await buildSchoolCard(grade, sch);
         container.appendChild(card);
     }
 }
 
-// 한 학교 카드 생성
+// 학교 카드 생성
 async function buildSchoolCard(gradeVal, schoolName) {
-    // 단원 코드 가져오기
     const resCodes = await fetch("/api/units", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
@@ -134,13 +129,12 @@ async function buildSchoolCard(gradeVal, schoolName) {
     });
     const codes = await resCodes.json();
 
-    // 단원명이 필요하면 매핑 가져오기
     let mapping = {};
-    if (Array.isArray(codes) && codes.length > 0) {
+    if (codes.length > 0) {
         const resMap = await fetch("/api/unit_names", {
             method: "POST",
             headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({ grade: gradeVal, codes: codes })
+            body: JSON.stringify({ grade: gradeVal, codes })
         });
         mapping = await resMap.json();
     }
@@ -150,31 +144,28 @@ async function buildSchoolCard(gradeVal, schoolName) {
 
     const header = document.createElement("div");
     header.classList.add("school-card-header");
-    header.textContent = gradeVal + "학년 " + schoolName;
+    header.textContent = `${gradeVal}학년 ${schoolName}`;
     card.appendChild(header);
 
     const body = document.createElement("div");
     body.classList.add("school-card-body");
 
-    if (!codes || codes.length === 0) {
-        const p = document.createElement("p");
-        p.textContent = "등록된 단원이 없습니다.";
-        body.appendChild(p);
+    if (codes.length === 0) {
+        body.textContent = "등록된 단원이 없습니다.";
     } else {
         const ul = document.createElement("ul");
         codes.forEach(code => {
             const li = document.createElement("li");
-            const name = mapping[code] || "";
-            li.textContent = name ? `${code} ${name}` : code;
+            li.textContent = mapping[code] ? `${code} ${mapping[code]}` : code;
             ul.appendChild(li);
         });
         body.appendChild(ul);
     }
     card.appendChild(body);
 
+    /* ===== 버튼 영역 (2x2) ===== */
     const footer = document.createElement("div");
-footer.classList.add('button-grid');
-    footer.classList.add("school-card-footer");
+    footer.classList.add("school-card-footer", "button-grid");
 
     const b1 = document.createElement("button");
     b1.textContent = "서술형 전체 합치기";
@@ -184,11 +175,18 @@ footer.classList.add('button-grid');
     b2.textContent = "최다빈출 전체 합치기";
     b2.onclick = () => mergeAll(gradeVal, schoolName, "최다빈출", card);
 
-    footer.appendChild(b1);
-    footer.appendChild(b2);
+    const b3 = document.createElement("button");
+    b3.textContent = "Final 모의고사 합치기";
+    b3.onclick = () => mergeFinal(gradeVal, schoolName, card);
+
+    const b4 = document.createElement("button");
+    b4.textContent = "오투 모의고사 합치기";
+    b4.onclick = () => alert("오투 모의고사는 아직 준비 중입니다.");
+
+    footer.append(b1, b2, b3, b4);
     card.appendChild(footer);
 
-    // Progress bar 아래쪽에 추가
+    /* ===== 진행 바 ===== */
     const progressBar = document.createElement("div");
     progressBar.classList.add("progress-bar");
     for (let i = 0; i < 10; i++) {
@@ -201,54 +199,65 @@ footer.classList.add('button-grid');
     return card;
 }
 
-// 학교별 전체 단원 병합 다운로드 + 진행 바 표시
+// 공통 병합
 function mergeAll(gradeVal, schoolName, type, card) {
-    const progressCells = card.querySelectorAll(".progress-cell");
+    runProgress(card, () =>
+        fetch("/api/merge_all", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({ grade: gradeVal, school: schoolName, type })
+        }),
+        `${gradeVal}학년_${schoolName}_${type}_전체.pdf`
+    );
+}
 
-    // 초기화
-    progressCells.forEach(c => {
+// Final 병합
+function mergeFinal(gradeVal, schoolName, card) {
+    runProgress(card, () =>
+        fetch("/api/merge_final", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({ grade: gradeVal, school: schoolName })
+        }),
+        `${gradeVal}학년_${schoolName}_FINAL모의고사.pdf`
+    );
+}
+
+// 진행바 공통 처리
+function runProgress(card, fetchFn, filename) {
+    const cells = card.querySelectorAll(".progress-cell");
+    cells.forEach(c => {
         c.classList.remove("filled", "done");
-        c.style.background = ""; // reset inline styles
+        c.style.background = "";
     });
 
-    let index = 0;
-    const interval = setInterval(() => {
-        if (index < progressCells.length) {
-            progressCells[index].classList.add("filled");
-            index++;
+    let i = 0;
+    const timer = setInterval(() => {
+        if (i < cells.length) {
+            cells[i++].classList.add("filled");
         } else {
-            clearInterval(interval);
+            clearInterval(timer);
         }
-    }, 150);
+    }, 120);
 
-    fetch("/api/merge_all", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({ grade: gradeVal, school: schoolName, type: type })
-    }).then(async r => {
-        clearInterval(interval);
+    fetchFn().then(async r => {
+        clearInterval(timer);
 
         if (!r.ok) {
-            // 실패 시 빨간색으로 표시
-            progressCells.forEach(c => {
-                c.classList.remove("filled", "done");
-                c.style.background = "#ef4444";
-            });
+            cells.forEach(c => c.style.background = "#ef4444");
             return;
         }
 
-        // 성공 -> 모든 칸을 done(녹색)으로
-        progressCells.forEach(c => {
+        cells.forEach(c => {
             c.classList.remove("filled");
             c.classList.add("done");
         });
 
         const blob = await r.blob();
         const url = URL.createObjectURL(blob);
-
         const a = document.createElement("a");
         a.href = url;
-        a.download = `${gradeVal}학년_${schoolName}_${type}_전체.pdf`;
+        a.download = filename;
         a.click();
     });
 }
