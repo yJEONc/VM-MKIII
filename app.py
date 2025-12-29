@@ -73,16 +73,6 @@ def ensure_cache():
         if CACHE["end_rows"] is None or CACHE["units_rows"] is None or CACHE["school_list"] is None:
             refresh_cache()
 
-# (선택) 첫 요청 전에 캐시를 미리 로드해서 "첫 로딩 느림"을 줄이고 싶으면 활성화
-@app.before_first_request
-def warmup_cache():
-    try:
-        ensure_cache()
-    except Exception:
-        # 구글 인증/환경변수 문제가 있을 때 서버가 바로 죽지 않게만 함
-        # 실제 API 호출 시 다시 시도하게 됨
-        pass
-
 # =========================
 # Data Access (Cache-based)
 # =========================
