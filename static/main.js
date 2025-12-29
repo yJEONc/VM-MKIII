@@ -3,6 +3,8 @@ let gradeSchools = [];          // end 시트에 해당 학년으로 존재하�
 let selectedSchools = new Set(); // 사용자가 선택한 학교들
 let allSchools = [];            // 전체 학교 목록
 
+let renderToken = 0;
+
 window.onload = function () {
     loadSchools();
     bindGradeClicks();
@@ -110,15 +112,22 @@ function updateSchoolStyles() {
 // 학교별 카드 렌더링
 async function renderUnits() {
     const container = document.getElementById("unit-columns");
+    const myToken = ++renderToken;
     container.innerHTML = "";
 
     if (!grade || selectedSchools.size === 0) return;
 
     for (const sch of selectedSchools) {
+        if (myToken !== renderToken) return;
+
         const card = await buildSchoolCard(grade, sch);
+
+        if (myToken !== renderToken) return;
+
         container.appendChild(card);
     }
 }
+
 
 // 학교 카드 생성
 async function buildSchoolCard(gradeVal, schoolName) {
