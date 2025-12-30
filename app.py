@@ -151,6 +151,37 @@ def api_unit_names():
     d = request.json
     return jsonify(get_unit_name_map(d["grade"], d.get("codes", [])))
 
+@app.route("/api/bundle_units", methods=["POST"])
+def api_bundle_units():
+    d = request.json
+    grade = str(d["grade"])
+    schools = d.get("schools", [])
+    if not schools:
+        return jsonify({})
+
+    # 학교별 codes 수집
+    school_codes = {}
+    all_codes = set()
+
+    for sch in schools:
+        codes = read_units_codes(grade, sch)  # ✅ 이미 캐시 기반
+        school_codes[sch] = codes
+        all_codes.update(codes)
+
+    # 단원명 매핑은 grade에 대해 "한 번만"
+    name_map = get_unit_name_map(grade, list(all_codes))  # ✅ 캐시 기반
+
+    # 학교별로 필요한 것만 잘라서 내려주기
+    out = {}
+    for sch, codes in school_codes.items():
+        out[sch] = {
+            "codes": codes,
+            "names": {c: name_map.get(c, "") for c in codes}
+        }
+
+    return jsonify(out)
+
+
 # ===== 수동 캐시 갱신(추가) =====
 @app.route("/api/refresh_cache", methods=["POST"])
 def api_refresh_cache():
