@@ -12,6 +12,27 @@ SHEET_UNITS = "units"
 GOOGLE_ENV = "GOOGLE_CREDENTIALS"
 
 app = Flask(__name__)
+app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev-secret-change-me")
+
+PUBLIC_PATHS = {"/login", "/logout"}
+
+@app.before_request
+def require_login():
+    path = request.path
+
+    # 정적 파일은 허용
+    if path.startswith("/static/"):
+        return None
+
+    # 로그인/로그아웃 페이지는 허용
+    if path in PUBLIC_PATHS:
+        return None
+
+    # 로그인 안 했으면 차단
+    if not session.get("logged_in"):
+        if path.startswith("/api/"):
+            return jsonify({"error": "unauthorized"}), 401
+        return redirect(url_for("login"))
 
 # =========================
 # Cache (END/UNITS/SCHOOL)
@@ -132,6 +153,26 @@ def find_pdfs(material_type, grade, unit_code):
 @app.route("/")
 def index():
     return render_template("index.html")
+    
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "GET":
+        return render_template("login.html")
+
+    password = request.form.get("password", "")
+    real = os.getenv("APP_PASSWORD", "")
+
+    if real and password == real:
+        session["logged_in"] = True
+        return redirect(url_for("index"))
+
+    return render_template("login.html", error="비밀번호가 올바르지 않습니다.")
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect(url_for("login"))
+
 
 @app.route("/api/schools")
 def api_schools():
