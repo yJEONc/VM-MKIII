@@ -8,6 +8,7 @@ let renderToken = 0;
 window.onload = function () {
     loadSchools();
     bindGradeClicks();
+    bindRefreshCacheButton(); // ✅ 추가
 };
 
 function bindGradeClicks() {
@@ -275,3 +276,37 @@ function runProgress(card, fetchFn, filename) {
         a.click();
     });
 }
+
+function bindRefreshCacheButton() {
+    const btn = document.getElementById("refresh-cache-btn");
+    if (!btn) return;
+
+    btn.onclick = async () => {
+        btn.disabled = true;
+        btn.textContent = "갱신 중...";
+
+        try {
+            const res = await fetch("/api/refresh_cache", { method: "POST" });
+
+            if (!res.ok) {
+                alert("캐시 갱신 실패");
+                return;
+            }
+
+            // ✅ 갱신 후 화면도 최신화
+            if (grade) {
+                await loadGradeSchools();
+                updateSchoolStyles();
+            }
+            await renderUnits();
+
+            alert("end시트 반영 완료");
+        } catch (e) {
+            alert("캐시 갱신 중 오류");
+        } finally {
+            btn.disabled = false;
+            btn.textContent = "end시트 반영";
+        }
+    };
+}
+
