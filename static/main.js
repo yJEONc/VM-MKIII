@@ -109,7 +109,7 @@ function updateSchoolStyles() {
     });
 }
 
-// 학교별 카드 렌더링
+// 학교별 카드 렌더링 (A안: 번들 1회 호출)
 async function renderUnits() {
     const container = document.getElementById("unit-columns");
     const myToken = ++renderToken;
@@ -117,37 +117,30 @@ async function renderUnits() {
 
     if (!grade || selectedSchools.size === 0) return;
 
-    for (const sch of selectedSchools) {
-        if (myToken !== renderToken) return;
+    const schoolsArr = Array.from(selectedSchools);
 
-        const card = await buildSchoolCard(grade, sch);
+    // ✅ 한 번에 다 가져오기
+    const res = await fetch("/api/bundle_units", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ grade: grade, schools: schoolsArr })
+    });
 
-        if (myToken !== renderToken) return;
+    if (myToken !== renderToken) return;
 
+    const bundle = await res.json();
+
+    if (myToken !== renderToken) return;
+
+    for (const sch of schoolsArr) {
+        const data = bundle[sch] || { codes: [], names: {} };
+        const card = buildSchoolCardFromData(grade, sch, data.codes, data.names);
         container.appendChild(card);
     }
 }
 
-
-// 학교 카드 생성
-async function buildSchoolCard(gradeVal, schoolName) {
-    const resCodes = await fetch("/api/units", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({ grade: gradeVal, school: schoolName })
-    });
-    const codes = await resCodes.json();
-
-    let mapping = {};
-    if (codes.length > 0) {
-        const resMap = await fetch("/api/unit_names", {
-            method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({ grade: gradeVal, codes })
-        });
-        mapping = await resMap.json();
-    }
-
+// 학교 카드 생성 (A안: 이미 받은 codes/mapping으로 DOM만 생성)
+function buildSchoolCardFromData(gradeVal, schoolName, codes, mapping) {
     const card = document.createElement("div");
     card.classList.add("school-card");
 
@@ -159,13 +152,13 @@ async function buildSchoolCard(gradeVal, schoolName) {
     const body = document.createElement("div");
     body.classList.add("school-card-body");
 
-    if (codes.length === 0) {
+    if (!codes || codes.length === 0) {
         body.textContent = "등록된 단원이 없습니다.";
     } else {
         const ul = document.createElement("ul");
         codes.forEach(code => {
             const li = document.createElement("li");
-            li.textContent = mapping[code] ? `${code} ${mapping[code]}` : code;
+            li.textContent = (mapping && mapping[code]) ? `${code} ${mapping[code]}` : code;
             ul.appendChild(li);
         });
         body.appendChild(ul);
