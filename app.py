@@ -16,6 +16,7 @@ app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev-secret-change-me")
 
 PUBLIC_PATHS = {"/login", "/logout"}
 
+
 @app.before_request
 def require_login():
     path = request.path
@@ -34,6 +35,7 @@ def require_login():
             return jsonify({"error": "unauthorized"}), 401
         return redirect(url_for("login"))
 
+
 # =========================
 # Cache (END/UNITS/SCHOOL)
 # =========================
@@ -45,12 +47,70 @@ CACHE = {
     "loaded_at": None     # float unix time
 }
 
+
 def get_service():
     info = json.loads(os.getenv(GOOGLE_ENV))
     creds = Credentials.from_service_account_info(
         info, scopes=["https://www.googleapis.com/auth/spreadsheets.readonly"]
     )
     return build("sheets", "v4", credentials=creds)
+
+
+def parse_science_date(text):
+    """
+    S열(과학시험일) 정렬용
+    우선순위 1: 가장 빠른 날짜
+    지원 예:
+    2026-04-30
+    2026.04.30
+    2026/04/30
+    4/30
+    4-30
+    """
+    text = (text or "").strip()
+    if not text:
+        return (9999, 12, 31)
+
+    # YYYY-MM-DD / YYYY.MM.DD / YYYY/MM/DD
+    m = re.search(r'(\d{4})[./-](\d{1,2})[./-](\d{1,2})', text)
+    if m:
+        return (int(m.group(1)), int(m.group(2)), int(m.group(3)))
+
+    # MM/DD 또는 MM-DD
+    m = re.search(r'(\d{1,2})[./-](\d{1,2})', text)
+    if m:
+        return (9999, int(m.group(1)), int(m.group(2)))
+
+    return (9999, 12, 31)
+
+
+def parse_exam_period(text):
+    """
+    R열(시험기간) 정렬용
+    우선순위 2: 시험기간의 시작일이 빠른 순
+    예:
+    4/30~5/1
+    4/22-4/23
+    4.22~4.23
+    """
+    text = (text or "").strip()
+    if not text:
+        return (99, 99)
+
+    m = re.search(r'(\d{1,2})[./-](\d{1,2})', text)
+    if m:
+        return (int(m.group(1)), int(m.group(2)))
+
+    return (99, 99)
+
+
+def school_sort_key(science_date, exam_period, school_name):
+    return (
+        parse_science_date(science_date),   # 1순위: 과학시험일
+        parse_exam_period(exam_period),     # 2순위: 시험기간 시작일
+        school_name or ""                   # 3순위: 학교명
+    )
+
 
 def refresh_cache():
     """
@@ -73,18 +133,57 @@ def refresh_cache():
     ).execute()
     units_rows = units_res.get("values", [])
 
-    # SCHOOL: A2:A
+    # SCHOOL LIST SOURCE: class+!I2:S
+    # I = 현재 학교
+    # R = 시험기간
+    # S = 과학시험일
     school_res = service.spreadsheets().values().get(
         spreadsheetId=SPREADSHEET_ID,
-        range=f"{SHEET_SCHOOL}!I2:I"
+        range=f"{SHEET_SCHOOL}!I2:S"
     ).execute()
     school_rows = school_res.get("values", [])
-    school_list = [v[0] for v in school_rows if v]
+
+    # 학교명별로 가장 빠른 (과학시험일, 시험기간) 한 건만 남김
+    best_by_school = {}
+
+    for row in school_rows:
+        # I~S 범위 인덱스
+        # I=0, J=1, K=2, L=3, M=4, N=5, O=6, P=7, Q=8, R=9, S=10
+        school_name = row[0].strip() if len(row) > 0 and row[0] else ""
+        exam_period = row[9].strip() if len(row) > 9 and row[9] else ""
+        science_date = row[10].strip() if len(row) > 10 and row[10] else ""
+
+        if not school_name:
+            continue
+
+        current_key = school_sort_key(science_date, exam_period, school_name)
+
+        if school_name not in best_by_school:
+            best_by_school[school_name] = {
+                "school": school_name,
+                "science_date": science_date,
+                "exam_period": exam_period,
+                "sort_key": current_key
+            }
+        else:
+            if current_key < best_by_school[school_name]["sort_key"]:
+                best_by_school[school_name] = {
+                    "school": school_name,
+                    "science_date": science_date,
+                    "exam_period": exam_period,
+                    "sort_key": current_key
+                }
+
+    school_list = [
+        item["school"]
+        for item in sorted(best_by_school.values(), key=lambda x: x["sort_key"])
+    ]
 
     CACHE["end_rows"] = end_rows
     CACHE["units_rows"] = units_rows
     CACHE["school_list"] = school_list
     CACHE["loaded_at"] = time.time()
+
 
 def ensure_cache():
     """
@@ -94,12 +193,14 @@ def ensure_cache():
         if CACHE["end_rows"] is None or CACHE["units_rows"] is None or CACHE["school_list"] is None:
             refresh_cache()
 
+
 # =========================
 # Data Access (Cache-based)
 # =========================
 def read_school_list():
     ensure_cache()
     return CACHE["school_list"]
+
 
 def read_units_codes(grade, school):
     ensure_cache()
@@ -108,6 +209,7 @@ def read_units_codes(grade, school):
         if len(r) >= 4 and str(r[1]) == str(grade) and r[2] == school:
             return [u.strip() for u in r[3].split(",") if u.strip()]
     return []
+
 
 def read_grade_schools(grade):
     ensure_cache()
@@ -121,6 +223,7 @@ def read_grade_schools(grade):
                 schools.append(r[2])
     return schools
 
+
 def get_unit_name_map(grade, codes):
     if not codes:
         return {}
@@ -132,6 +235,7 @@ def get_unit_name_map(grade, codes):
         if len(r) >= 3 and str(r[0]) == str(grade) and r[1] in codes_set:
             mapping[r[1]] = r[2]
     return mapping
+
 
 # =========================
 # PDF Helpers
@@ -147,13 +251,15 @@ def find_pdfs(material_type, grade, unit_code):
         if f.lower().endswith(".pdf") and pattern.search(f)
     ]
 
+
 # =========================
 # Routes
 # =========================
 @app.route("/")
 def index():
     return render_template("index.html")
-    
+
+
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "GET":
@@ -168,6 +274,7 @@ def login():
 
     return render_template("login.html", error="비밀번호가 올바르지 않습니다.")
 
+
 @app.route("/logout")
 def logout():
     session.clear()
@@ -178,19 +285,23 @@ def logout():
 def api_schools():
     return jsonify(read_school_list())
 
+
 @app.route("/api/grade_schools", methods=["POST"])
 def api_grade_schools():
     return jsonify(read_grade_schools(request.json["grade"]))
+
 
 @app.route("/api/units", methods=["POST"])
 def api_units():
     d = request.json
     return jsonify(read_units_codes(d["grade"], d["school"]))
 
+
 @app.route("/api/unit_names", methods=["POST"])
 def api_unit_names():
     d = request.json
     return jsonify(get_unit_name_map(d["grade"], d.get("codes", [])))
+
 
 @app.route("/api/bundle_units", methods=["POST"])
 def api_bundle_units():
@@ -205,14 +316,14 @@ def api_bundle_units():
     all_codes = set()
 
     for sch in schools:
-        codes = read_units_codes(grade, sch)  # ✅ 이미 캐시 기반
+        codes = read_units_codes(grade, sch)
         school_codes[sch] = codes
         all_codes.update(codes)
 
-    # 단원명 매핑은 grade에 대해 "한 번만"
-    name_map = get_unit_name_map(grade, list(all_codes))  # ✅ 캐시 기반
+    # 단원명 매핑은 grade에 대해 한 번만
+    name_map = get_unit_name_map(grade, list(all_codes))
 
-    # 학교별로 필요한 것만 잘라서 내려주기
+    # 학교별 필요한 것만 반환
     out = {}
     for sch, codes in school_codes.items():
         out[sch] = {
@@ -223,13 +334,14 @@ def api_bundle_units():
     return jsonify(out)
 
 
-# ===== 수동 캐시 갱신(추가) =====
+# ===== 수동 캐시 갱신 =====
 @app.route("/api/refresh_cache", methods=["POST"])
 def api_refresh_cache():
     with CACHE_LOCK:
         refresh_cache()
         loaded_at = CACHE["loaded_at"]
     return jsonify({"ok": True, "loaded_at": loaded_at})
+
 
 @app.route("/api/merge_all", methods=["POST"])
 def api_merge_all():
@@ -254,6 +366,7 @@ def api_merge_all():
         download_name=f'{d["grade"]}학년_{d["school"]}_{d["type"]}_전체.pdf',
         mimetype="application/pdf"
     )
+
 
 @app.route("/api/merge_final", methods=["POST"])
 def api_merge_final():
@@ -280,7 +393,6 @@ def api_merge_final():
                 appended += 1
                 matched = True
                 break
-        # matched=False면 해당 단원 파일이 없는 것 → 그냥 스킵(기존 로직 유지)
 
     if appended == 0:
         return jsonify({"error": "no_files"}), 404
@@ -295,7 +407,7 @@ def api_merge_final():
         mimetype="application/pdf"
     )
 
-# ===== 오투 모의고사 (기존 추가 기능 유지) =====
+
 @app.route("/api/merge_otoo", methods=["POST"])
 def api_merge_otoo():
     d = request.json
@@ -332,6 +444,7 @@ def api_merge_otoo():
         download_name=f'{grade}학년_{d["school"]}_오투모의고사.pdf',
         mimetype="application/pdf"
     )
+
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", "5000"))
