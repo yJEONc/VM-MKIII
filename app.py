@@ -6,7 +6,7 @@ from googleapiclient.discovery import build
 from PyPDF2 import PdfMerger
 
 SPREADSHEET_ID = "1rsplfNq4e7d-nrp-Wlg1Mn9dsgjAcNn49yPQDXdzwg8"
-SHEET_SCHOOL = "school"
+SHEET_SCHOOL = "class+"
 SHEET_END = "end"
 SHEET_UNITS = "units"
 GOOGLE_ENV = "GOOGLE_CREDENTIALS"
@@ -76,7 +76,7 @@ def refresh_cache():
     # SCHOOL: A2:A
     school_res = service.spreadsheets().values().get(
         spreadsheetId=SPREADSHEET_ID,
-        range=f"{SHEET_SCHOOL}!A2:A"
+        range=f"{SHEET_SCHOOL}!I2:I"
     ).execute()
     school_rows = school_res.get("values", [])
     school_list = [v[0] for v in school_rows if v]
